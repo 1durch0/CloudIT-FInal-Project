@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "title": "Sunset over the lake",
+    "description": "A warm summer evening at the water.",
+    "imageUrl": "https://picsum.photos/seed/sunset/400/300"
+  },
+  {
+    "id": 2,
+    "title": "City skyline",
+    "description": "Downtown seen from the bridge.",
+    "imageUrl": "https://picsum.photos/seed/city/400/300"
+  },
+  {
+    "id": 3,
+    "title": "Windows XP",
+    "description": "windows xp screen",
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/en/6/64/Windows_XP_Luna.png?utm_source=en.wikipedia.org&utm_campaign=index&utm_content=original"
+  }
+]

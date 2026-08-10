@@ -1,7 +1,8 @@
-const API_URL = "http://localhost:3000/api";
+const AUTH_API_URL = "http://localhost:3000/api";
+const GALLERY_API_URL = "http://localhost:3001/api";
 
-async function request(path, options) {
-  const res = await fetch(`${API_URL}${path}`, {
+async function request(baseUrl, path, options) {
+  const res = await fetch(`${baseUrl}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
@@ -13,15 +14,26 @@ async function request(path, options) {
 }
 
 export function registerUser(user) {
-  return request("/register", {
+  return request(AUTH_API_URL, "/register", {
     method: "POST",
     body: JSON.stringify(user),
   });
 }
 
 export function loginUser(credentials) {
-  return request("/login", {
+  return request(AUTH_API_URL, "/login", {
     method: "POST",
     body: JSON.stringify(credentials),
+  });
+}
+
+export function fetchImages() {
+  return request(GALLERY_API_URL, "/images");
+}
+
+export function addImage(image) {
+  return request(GALLERY_API_URL, "/images", {
+    method: "POST",
+    body: JSON.stringify(image),
   });
 }
