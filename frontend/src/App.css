@@ -53,6 +53,11 @@ h1 {
   color: #213547;
 }
 
+.error {
+  color: #c0392b;
+  margin: 0;
+}
+
 form {
   display: flex;
   flex-direction: column;
