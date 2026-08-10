@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Alice Johnson",
+    "email": "alice.johnson@example.com",
+    "password": "secret"
+    }
+  ,
+  {
+    "name": "Bob Smith",
+    "email": "bob.smith@example.com",
+    "password": "12345"
+    }
+  ,
+  {
+    "name": "Charlie Davis",
+    "email": "charlie.davis@example.com",
+    "password": "bliblablub"
+  },
+  {
+    "name": "Diana Prince",
+    "email": "diana.prince@example.com",
+    "password": "mehrzweckeier"
+  }
+]
