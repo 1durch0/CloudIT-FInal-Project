@@ -20,7 +20,7 @@ export default function Dashboard() {
       {error && <p className="error">{error}</p>}
       <div className="gallery">
         {images.map((img) => (
-          <figure key={img.id}>
+          <figure key={img._id}>
             <img src={img.imageUrl} alt={img.title} />
             <figcaption>
               <strong>{img.title}</strong>

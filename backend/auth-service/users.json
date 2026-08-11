@@ -18,5 +18,20 @@
     "name": "Diana Prince",
     "email": "diana.prince@example.com",
     "password": "mehrzweckeier"
+  },
+  {
+    "name": "Test User",
+    "email": "test@example.com",
+    "password": "pw123"
+  },
+  {
+    "name": "Test User",
+    "email": "test@example.com",
+    "password": "pw123"
+  },
+  {
+    "name": "Fresh Test",
+    "email": "fresh@example.com",
+    "password": "pw123"
   }
 ]

@@ -1,22 +1,34 @@
 const express = require("express");
 const cors = require("cors");
-const fs = require("fs/promises");
-const path = require("path");
+const mongoose = require("mongoose");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-let images = require("./images.json");
-
 const PORT = process.env.PORT || 3001;
+
+const imageSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String, default: "" },
+  imageUrl: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const Image = mongoose.model("Image", imageSchema);
 
 app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-app.get("/api/images", (req, res) => {
-  res.json(images);
+app.get("/api/images", async (req, res) => {
+  try {
+    const images = await Image.find().sort({ createdAt: -1 });
+    res.json(images);
+  } catch (error) {
+    console.error("Error fetching images:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 app.post("/api/images", async (req, res) => {
@@ -29,25 +41,49 @@ app.post("/api/images", async (req, res) => {
         .json({ message: "Title and imageUrl are required" });
     }
 
-    const newImage = {
-      id: images.length + 1,
+    const image = await Image.create({
       title,
       description: description || "",
       imageUrl,
-    };
+    });
 
-    images.push(newImage);
-
-    const filePath = path.join(__dirname, "images.json");
-    await fs.writeFile(filePath, JSON.stringify(images, null, 2), "utf-8");
-
-    return res.status(201).json({ message: "Image added", image: newImage });
+    return res.status(201).json({ message: "Image added", image });
   } catch (error) {
     console.error("Error saving image:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`gallery-service running on http://localhost:${PORT}`);
-});
+async function seed() {
+  const count = await Image.countDocuments();
+  if (count > 0) return;
+
+  await Image.insertMany([
+    {
+      title: "Sunset over the lake",
+      description: "A warm summer evening at the water.",
+      imageUrl: "https://picsum.photos/seed/sunset/400/300",
+    },
+    {
+      title: "City skyline",
+      description: "Downtown seen from the bridge.",
+      imageUrl: "https://picsum.photos/seed/city/400/300",
+    },
+  ]);
+
+  console.log("Seeded sample images");
+}
+
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(async () => {
+    console.log("gallery-service connected to MongoDB");
+    await seed();
+    app.listen(PORT, () => {
+      console.log(`gallery-service running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("MongoDB connection error:", error);
+    process.exit(1);
+  });
