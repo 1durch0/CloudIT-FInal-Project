@@ -1,10 +1,10 @@
 import { useState } from "react"
-import { addImage } from "../api"
+import { uploadImage } from "../api"
 
 export default function Upload() {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [imageUrl, setImageUrl] = useState("")
+  const [file, setFile] = useState(null)
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -15,11 +15,15 @@ export default function Upload() {
     setError("")
     setLoading(true)
     try {
-      await addImage({ title, description, imageUrl })
+      const formData = new FormData()
+      formData.append("title", title)
+      formData.append("description", description)
+      formData.append("image", file)
+      await uploadImage(formData)
       setTitle("")
       setDescription("")
-      setImageUrl("")
-      setMessage("Image added successfully")
+      setFile(null)
+      setMessage("Image uploaded to Azure successfully")
     } catch (err) {
       setError(err.message)
     } finally {
@@ -50,12 +54,11 @@ export default function Upload() {
           />
         </label>
         <label>
-          Image URL
+          Image
           <input
-            type="url"
-            placeholder="https://picsum.photos/seed/x/400/300"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files[0])}
             required
           />
         </label>

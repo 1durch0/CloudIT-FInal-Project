@@ -11,8 +11,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@azure/storage-blob": "^12.33.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "mongoose": "^9.9.2"
+    "mongoose": "^9.9.2",
+    "multer": "^2.2.0"
   }
 }

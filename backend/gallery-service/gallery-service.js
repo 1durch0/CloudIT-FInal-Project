@@ -1,12 +1,25 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const multer = require("multer");
+const { BlobServiceClient } = require("@azure/storage-blob");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
+const containerName = "images";
+
+const blobServiceClient = BlobServiceClient.fromConnectionString(
+  process.env.AZURE_STORAGE_CONNECTION_STRING
+);
+const containerClient = blobServiceClient.getContainerClient(containerName);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
 
 const imageSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -31,25 +44,38 @@ app.get("/api/images", async (req, res) => {
   }
 });
 
-app.post("/api/images", async (req, res) => {
+app.post("/api/images", upload.single("image"), async (req, res) => {
   try {
-    const { title, description, imageUrl } = req.body;
+    const { title, description } = req.body;
 
-    if (!title || !imageUrl) {
-      return res
-        .status(400)
-        .json({ message: "Title and imageUrl are required" });
+    if (!title) {
+      return res.status(400).json({ message: "Title is required" });
     }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "Image file is required" });
+    }
+
+    const safeName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const blobName = `${Date.now()}-${safeName}`;
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    await blockBlobClient.uploadData(req.file.buffer, {
+      blobHTTPHeaders: { blobContentType: req.file.mimetype },
+    });
 
     const image = await Image.create({
       title,
       description: description || "",
-      imageUrl,
+      imageUrl: blockBlobClient.url,
     });
 
     return res.status(201).json({ message: "Image added", image });
   } catch (error) {
     console.error("Error saving image:", error);
+    if (error instanceof multer.MulterError) {
+      return res.status(400).json({ message: error.message });
+    }
     return res.status(500).json({ message: "Internal server error" });
   }
 });

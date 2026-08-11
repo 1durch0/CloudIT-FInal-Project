@@ -31,9 +31,15 @@ export function fetchImages() {
   return request(GALLERY_API_URL, "/images");
 }
 
-export function addImage(image) {
-  return request(GALLERY_API_URL, "/images", {
+export function uploadImage(formData) {
+  return fetch(`${GALLERY_API_URL}/images`, {
     method: "POST",
-    body: JSON.stringify(image),
+    body: formData,
+  }).then(async (res) => {
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || "Something went wrong");
+    }
+    return data;
   });
 }
