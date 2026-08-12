@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
-import { fetchImages } from "../api"
+import { fetchImages, fetchStats } from "../api"
 
 export default function Dashboard() {
   const [images, setImages] = useState([])
+  const [imageCount, setImageCount] = useState(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
 
@@ -10,6 +11,9 @@ export default function Dashboard() {
     fetchImages()
       .then(setImages)
       .catch((err) => setError(err.message))
+    fetchStats()
+      .then((data) => setImageCount(data.imageCount))
+      .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
@@ -18,6 +22,11 @@ export default function Dashboard() {
       <h1>Dashboard</h1>
       {loading && <p>Loading images...</p>}
       {error && <p className="error">{error}</p>}
+      {imageCount !== null && (
+        <p className="stats">
+          Serverless stats: {imageCount} image{imageCount === 1 ? "" : "s"} stored
+        </p>
+      )}
       <div className="gallery">
         {images.map((img) => (
           <figure key={img._id}>

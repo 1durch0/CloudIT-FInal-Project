@@ -63,6 +63,14 @@ h1 {
   margin: 0;
 }
 
+.stats {
+  background: #e8f6ef;
+  color: #1e8449;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  display: inline-block;
+}
+
 .gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
