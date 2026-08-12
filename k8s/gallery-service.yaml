@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gallery-service
+  namespace: fullstack-cloudit
+  labels:
+    app: gallery-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gallery-service
+  template:
+    metadata:
+      labels:
+        app: gallery-service
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: gallery-service
+          image: ghcr.io/1durch0/gallery-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3001
+          env:
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: MONGO_URI
+            - name: AZURE_STORAGE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: AZURE_STORAGE_CONNECTION_STRING
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gallery-service
+  namespace: fullstack-cloudit
+spec:
+  selector:
+    app: gallery-service
+  ports:
+    - port: 3001
+      targetPort: 3001
