@@ -1,9 +1,10 @@
 const express = require("express");
-const cors = require("cors");
+const helmet = require("helmet");
 const mongoose = require("mongoose");
+const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 
 const app = express();
-app.use(cors());
+app.use(helmet());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
@@ -16,12 +17,51 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-app.post("/api/register", async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+function clientIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) return String(forwarded).split(",")[0].trim();
+  return ipKeyGenerator(req.ip, 56);
+}
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { message: "Too many login attempts, please try again later" },
+  keyGenerator: clientIp,
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { message: "Too many registration attempts, please try again later" },
+  keyGenerator: clientIp,
+});
+
+app.post("/api/register", registerLimiter, async (req, res) => {
+  try {
+    const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+    const email =
+      typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const password = typeof req.body.password === "string" ? req.body.password : "";
+
+    if (!name || name.length > 50) {
+      return res
+        .status(400)
+        .json({ message: "Name is required (max 50 characters)" });
+    }
+    if (!EMAIL_RE.test(email)) {
+      return res.status(400).json({ message: "A valid email address is required" });
+    }
+    if (password.length < 8 || password.length > 72) {
+      return res
+        .status(400)
+        .json({ message: "Password must be 8-72 characters long" });
     }
 
     const user = await User.create({ name, email, password });
@@ -39,8 +79,10 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-app.post("/api/login", async (req, res) => {
-  const { email, password } = req.body;
+app.post("/api/login", loginLimiter, async (req, res) => {
+  const email =
+    typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const password = typeof req.body.password === "string" ? req.body.password : "";
 
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password are required" });

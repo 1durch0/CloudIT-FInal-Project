@@ -7,6 +7,8 @@ RUN npm ci --omit=dev
 
 COPY gallery-service.js ./
 
+USER node
+
 EXPOSE 3001
 
 CMD ["npm", "start"]

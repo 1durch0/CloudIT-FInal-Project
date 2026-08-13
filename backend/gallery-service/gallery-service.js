@@ -1,11 +1,12 @@
 const express = require("express");
-const cors = require("cors");
+const helmet = require("helmet");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const { BlobServiceClient } = require("@azure/storage-blob");
+const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 
 const app = express();
-app.use(cors());
+app.use(helmet());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
@@ -19,6 +20,88 @@ const containerClient = blobServiceClient.getContainerClient(containerName);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+const MAX_TITLE_LENGTH = 100;
+const MAX_DESCRIPTION_LENGTH = 500;
+
+const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "jpe", "png", "gif", "webp", "avif"]);
+
+const CONTENT_TYPES = {
+  jpg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  avif: "image/avif",
+};
+
+function normalizeExt(ext) {
+  const map = { jpeg: "jpg", jpe: "jpg", jpg: "jpg" };
+  return map[ext] || ext;
+}
+
+function detectImageType(buffer) {
+  if (!buffer || buffer.length < 12) return null;
+
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "jpg";
+
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  )
+    return "png";
+
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38)
+    return "gif";
+
+  if (
+    buffer[0] === 0x52 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x46 &&
+    buffer[8] === 0x57 &&
+    buffer[9] === 0x45 &&
+    buffer[10] === 0x42 &&
+    buffer[11] === 0x50
+  )
+    return "webp";
+
+  const brand = buffer.subarray(4, 12).toString("latin1");
+  if (brand.startsWith("ftyp") && (brand.slice(4, 8) === "avif" || brand.slice(4, 8) === "avis"))
+    return "avif";
+
+  return null;
+}
+
+function sanitizeText(value, maxLength) {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/<[^>]*>/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function clientIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) return String(forwarded).split(",")[0].trim();
+  return ipKeyGenerator(req.ip, 56);
+}
+
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { message: "Too many uploads, please try again later" },
+  keyGenerator: clientIp,
 });
 
 const imageSchema = new mongoose.Schema({
@@ -44,9 +127,10 @@ app.get("/api/images", async (req, res) => {
   }
 });
 
-app.post("/api/images", upload.single("image"), async (req, res) => {
+app.post("/api/images", uploadLimiter, upload.single("image"), async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const title = sanitizeText(req.body.title, MAX_TITLE_LENGTH);
+    const description = sanitizeText(req.body.description, MAX_DESCRIPTION_LENGTH);
 
     if (!title) {
       return res.status(400).json({ message: "Title is required" });
@@ -57,11 +141,25 @@ app.post("/api/images", upload.single("image"), async (req, res) => {
     }
 
     const safeName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const ext = safeName.toLowerCase().split(".").pop();
+    const detected = detectImageType(req.file.buffer);
+
+    if (
+      !ALLOWED_EXTENSIONS.has(ext) ||
+      detected === null ||
+      detected !== normalizeExt(ext) ||
+      !req.file.mimetype.startsWith("image/")
+    ) {
+      return res.status(415).json({
+        message: "Invalid or unsupported image file. Allowed types: JPG, PNG, GIF, WEBP, AVIF",
+      });
+    }
+
     const blobName = `${Date.now()}-${safeName}`;
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     await blockBlobClient.uploadData(req.file.buffer, {
-      blobHTTPHeaders: { blobContentType: req.file.mimetype },
+      blobHTTPHeaders: { blobContentType: CONTENT_TYPES[detected] },
     });
 
     const image = await Image.create({
@@ -73,11 +171,21 @@ app.post("/api/images", upload.single("image"), async (req, res) => {
     return res.status(201).json({ message: "Image added", image });
   } catch (error) {
     console.error("Error saving image:", error);
-    if (error instanceof multer.MulterError) {
-      return res.status(400).json({ message: error.message });
-    }
     return res.status(500).json({ message: "Internal server error" });
   }
+});
+
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ message: "File too large (max 5 MB)" });
+    }
+    return res.status(400).json({ message: err.message });
+  }
+  if (err) {
+    return res.status(400).json({ message: "Invalid request" });
+  }
+  next();
 });
 
 async function seed() {
