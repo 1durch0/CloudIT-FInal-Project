@@ -17,9 +17,17 @@ body {
 .navbar {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   padding: 0.8rem 1.5rem;
   background-color: #213547;
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    gap: 0.3rem 0.6rem;
+    padding: 0.6rem 1rem;
+  }
 }
 
 .navbar .brand {

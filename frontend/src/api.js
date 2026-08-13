@@ -1,6 +1,6 @@
-const AUTH_API_URL = "http://localhost:3000/api";
-const GALLERY_API_URL = "http://localhost:3001/api";
-const STATS_API_URL = "https://fullstack-cloudit-stats.azurewebsites.net/api";
+const AUTH_API_URL = "/api/auth";
+const GALLERY_API_URL = "/api/gallery";
+const STATS_API_URL = "/api";
 
 async function request(baseUrl, path, options) {
   const res = await fetch(`${baseUrl}${path}`, {

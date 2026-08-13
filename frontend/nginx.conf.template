@@ -8,19 +8,19 @@ server {
     gzip_types text/plain text/css application/json application/javascript image/svg+xml;
 
     location /api/auth/ {
-        proxy_pass http://auth-service:3000/api/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+        proxy_pass ${AUTH_SERVICE_BASE}/api/;
+        proxy_set_header Host ${AUTH_SERVICE_HOST};
+        proxy_ssl_server_name on;
     }
 
     location /api/gallery/ {
-        proxy_pass http://gallery-service:3001/api/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+        proxy_pass ${GALLERY_SERVICE_BASE}/api/;
+        proxy_set_header Host ${GALLERY_SERVICE_HOST};
+        proxy_ssl_server_name on;
     }
 
     location /api/stats {
-        proxy_pass https://fullstack-cloudit-stats.azurewebsites.net;
+        proxy_pass ${STATS_URL};
         proxy_set_header Host fullstack-cloudit-stats.azurewebsites.net;
         proxy_ssl_server_name on;
     }
