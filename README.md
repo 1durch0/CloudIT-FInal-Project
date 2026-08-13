@@ -26,8 +26,8 @@ deployed to Azure Container Apps.
   proxies to them via nginx with `proxy_set_header Host <internal-fqdn>`.
 - Secrets are stored in **Azure Key Vault** and referenced from the Container
   Apps via a user-assigned managed identity (no secrets in images, repos, or env).
-- **Kubernetes**: `k8s/` contains Deployment/Service manifests for the same app
-  (previously deployed on AKS; useful for local minikube).
+- **Kubernetes**: the same containers are orchestrated with Kubernetes — full
+  manifests in `k8s/` (see the dedicated section below).
 
 ## Run locally (docker-compose)
 
@@ -42,6 +42,32 @@ docker-compose up --build
 Each backend reads `MONGO_URI` / `AZURE_STORAGE_CONNECTION_STRING` from its
 local `.env` file (gitignored, never committed). See `backend/*/.env.example`
 for the required variables.
+
+## Kubernetes orchestration
+
+Every service (frontend, `auth-service`, `gallery-service`) is containerized,
+and Kubernetes orchestration is included as a deployment option:
+
+- `k8s/namespace.yaml` — dedicated namespace `fullstack-cloudit`
+- `k8s/frontend.yaml`, `k8s/auth-service.yaml`, `k8s/gallery-service.yaml` —
+  one **Deployment** + one **Service** per microservice
+- Images are pulled from GHCR (`ghcr.io/1durch0/...`) via the `ghcr-secret`
+  image pull secret; runtime secrets come from the `app-secret` Kubernetes
+  Secret (created from the gitignored `.env` files)
+- The full application was validated end to end on **Azure AKS** and locally
+  on **minikube** during development
+
+Apply everything with:
+
+```bash
+kubectl apply -f k8s/
+```
+
+For the final hosted deployment the same container images run on **Azure
+Container Apps** (a serverless, Kubernetes-based container platform), which is
+the live environment linked in this README. The `k8s/` manifests remain the
+Kubernetes deliverable of this project and can be re-deployed to any cluster
+without code changes.
 
 ## Secrets & Rotation
 
